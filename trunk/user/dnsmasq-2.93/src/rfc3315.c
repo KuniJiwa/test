@@ -189,8 +189,11 @@ static int dhcp6_maybe_relay(struct state *state, unsigned char *inbuff, size_t 
 	  
       if (!state->context)
 	{
+#if 0
+/* disable DHCPv6 noaddr messages, noisy */
 	  my_syslog(MS_DHCP | LOG_WARNING, 
 		    _("no address range available for DHCPv6 request via %s"), state->iface_name);
+#endif
 	  return 0;
 	}
 
@@ -818,7 +821,7 @@ static int dhcp6_no_relay(struct state *state, int msg_type, unsigned char *inbu
 	    for (c = state->context; c; c = c->current)
 	      if (!(c->flags & CONTEXT_RA_STATELESS))
 		{
-		  log6_packet(state, state->lease_allocate ? "DHCPREPLY" : "DHCPADVERTISE", NULL, _("no addresses available"));
+		  log6_quiet(state, state->lease_allocate ? "DHCPREPLY" : "DHCPADVERTISE", NULL, _("no addresses available"));
 		  break;
 		}
 	  }
@@ -934,7 +937,7 @@ static int dhcp6_no_relay(struct state *state, int msg_type, unsigned char *inbu
 	    put_opt6_short(DHCP6NOADDRS);
 	    put_opt6_string(_("no addresses available"));
 	    end_opt6(o1);
-	    log6_packet(state, "DHCPREPLY", NULL, _("no addresses available"));
+	    log6_quiet(state, "DHCPREPLY", NULL, _("no addresses available"));
 	  }
 
 	tagif = add_options(state, 0);
@@ -1049,10 +1052,7 @@ static int dhcp6_no_relay(struct state *state, int msg_type, unsigned char *inbu
 		    message = _("address invalid");
 		  } 
 
-		if (message && (message != state->hostname))
-		  log6_packet(state, "DHCPREPLY", &req_addr, message);	
-		else
-		  log6_quiet(state, "DHCPREPLY", &req_addr, message);
+		log6_quiet(state, "DHCPREPLY", &req_addr, message);
 	
 		o1 =  new_opt6(OPTION6_IAADDR);
 		put_opt6(&req_addr, sizeof(req_addr));
