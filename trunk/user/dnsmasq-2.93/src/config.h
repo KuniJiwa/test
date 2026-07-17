@@ -51,7 +51,7 @@
 #define DEFLEASE 3600 /* default DHCPv4 lease time, one hour */
 #define DEFLEASE6 (3600*24) /* default lease time for DHCPv6. One day. */
 #define CHUSER "nobody"
-#define CHGRP "dip"
+#define CHGRP "nogroup"
 #define TFTP_MAX_CONNECTIONS 50 /* max simultaneous connections */
 #define TFTP_MAX_WINDOW 32 /* max window size to negotiate */
 #define TFTP_TRANSFER_TIME 120 /* Abandon TFTP transfers after this long. Two mins. */
@@ -191,6 +191,8 @@ RESOLVFILE
 #define HAVE_LOOP
 #define HAVE_DUMPFILE
 
+#define LEASEFILE "/tmp/dnsmasq.leases"
+
 /* Build options which require external libraries.
    
    Defining HAVE_<opt>_STATIC as _well_ as HAVE_<opt> will link the library statically.
@@ -269,6 +271,8 @@ HAVE_SOCKADDR_SA_LEN
 #  ifndef IPV6_V6ONLY
 #    define IPV6_V6ONLY 26
 #  endif
+#elif !defined(NO_IPV6)
+#  define NO_IPV6
 #endif
 
 /* This is for glibc 2.x */
