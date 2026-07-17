@@ -3,6 +3,13 @@ run-name: Migrate all dnsmasq patches 2.90 → 2.93
 on:
   workflow_dispatch:
 
+env:
+  DNS_VER: "2.93"
+  SRC_NAME: "dnsmasq-2.93"
+  SRC_EXT: "tar.xz"
+  SRC_URL: "https://thekelleys.org.uk/dnsmasq/dnsmasq-2.93.tar.xz"
+  SRC_SHA256: "0C00D4E5C97C8306E5FB932B348B34269C9C29A0E7DF0E8E82958B407092BC19"
+
 jobs:
   patch-test:
     runs-on: ubuntu-latest
@@ -22,14 +29,6 @@ jobs:
           cd ..
           rm -rf padavan-tmp
           ls -la patches/
-
-      - name: Define global env vars
-        run: |
-          echo "DNS_VER=2.93" >> $GITHUB_ENV
-          echo "SRC_NAME=dnsmasq-${{ env.DNS_VER }}" >> $GITHUB_ENV
-          echo "SRC_EXT=tar.xz" >> $GITHUB_ENV
-          echo "SRC_URL=https://thekelleys.org.uk/dnsmasq/${{ env.SRC_NAME }}.${{ env.SRC_EXT }}" >> $GITHUB_ENV
-          echo "SRC_SHA256=0C00D4E5C97C8306E5FB932B348B34269C9C29A0E7DF0E8E82958B407092BC19" >> $GITHUB_ENV
 
       - name: Download source archive & SHA256 integrity verify
         run: |
