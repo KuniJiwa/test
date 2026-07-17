@@ -1,0 +1,63 @@
+name: Patch Migrate Test
+run-name: Migrate dnsmasq patch 2.90 → 2.93
+on:
+  workflow_dispatch: # 手动触发测试
+
+jobs:
+  patch-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo (load patches)
+        uses: actions/checkout@v4
+
+      - name: Variables define
+        run: |
+          echo "DNS_VER=2.93" >> $GITHUB_ENV
+          echo "PATCH_FILE=patches/001-dnsmasq-custom.patch" >> $GITHUB_ENV
+          echo "SRC_NAME=dnsmasq-${{ env.DNS_VER }}" >> $GITHUB_ENV
+          echo "SRC_URL=https://thekelleys.org.uk/dnsmasq/${{ env.SRC_NAME }}.tar.gz" >> $GITHUB_ENV
+
+      - name: Download & extract dnsmasq source
+        run: |
+          wget ${{ env.SRC_URL }}
+          tar -zxf ${{ env.SRC_NAME }}.tar.gz
+          ls -la
+
+      - name: Try apply patch
+        id: patch_step
+        run: |
+          set +e
+          cd ${{ env.SRC_NAME }}
+          echo "===== Dry run test patch ====="
+          patch -p1 --dry-run < ../${{ env.PATCH_FILE }} > ../patch_dryrun.log 2>&1
+          DRY_RET=$?
+          echo "dry_run_exit=$DRY_RET" >> $GITHUB_ENV
+
+          echo "===== Start apply patch ====="
+          patch -p1 --no-backup-if-mismatch < ../${{ env.PATCH_FILE }} > ../patch_apply.log 2>&1
+          APPLY_RET=$?
+          echo "apply_exit=$APPLY_RET" >> $GITHUB_ENV
+
+          cd ..
+          # 生成新版本补丁，无论冲突与否都输出
+          diff -urN ${{ env.SRC_NAME }}.orig ${{ env.SRC_NAME }} > new-${{ env.SRC_NAME }}.patch || true
+
+      - name: Upload all artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: patch-test-output
+          path: |
+            *.log
+            new-dnsmasq-*.patch
+            ${{ env.SRC_NAME }}/
+          retention-days: 7
+
+      - name: Print result summary
+        run: |
+          echo "Dry-run return code: ${{ env.dry_run_exit }}"
+          echo "Patch apply return code: ${{ env.apply_exit }}"
+          if [[ ${{ env.apply_exit }} -ne 0 ]];then
+            echo "::warning::补丁存在冲突，请下载artifact查看 *.rej 文件人工修正"
+          else
+            echo "✅ 补丁应用无冲突，新补丁 new-dnsmasq-${{ env.DNS_VER }}.patch 已生成"
+          fi
