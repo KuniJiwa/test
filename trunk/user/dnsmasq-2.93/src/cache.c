@@ -470,7 +470,7 @@ static int is_expired(time_t now, struct crec *crecp)
   /* Don't dump expired entries if they are within the accepted timeout range.
      The cache becomes approx. LRU. Never use expired DS or DNSKEY entries.
      Possible values for daemon->cache_max_expiry:
-      -1  == serve cached content regardless how long ago it expired
+      -1  == serve cached content regardless how long it expired
        0  == the option is disabled, expired content isn't served
       <n> == serve cached content only if it expire less than <n> seconds
              ago (where n is a positive integer) */
@@ -608,7 +608,11 @@ static struct crec *cache_scan_free(char *name, union all_addr *addr, unsigned s
   else
     {
       int i;
+#ifdef HAVE_IPV6
       int addrlen = (flags & F_IPV6) ? IN6ADDRSZ : INADDRSZ;
+#else
+      int addrlen = INADDRSZ;
+#endif /* HAVE_IPV6 */
 
       for (i = 0; i < hash_size; i++)
 	for (crecp = hash_table[i], up = &hash_table[i]; 
@@ -725,9 +729,11 @@ static struct crec *really_insert(char *name, union all_addr *addr, unsigned sho
 	  if ((flags & F_IPV4) && (new->flags & F_IPV4) &&
 	      new->addr.addr4.s_addr == addr->addr4.s_addr)
 	    return new;
+#ifdef HAVE_IPV6
 	  else if ((flags & F_IPV6) && (new->flags & F_IPV6) &&
 		   IN6_ARE_ADDR_EQUAL(&new->addr.addr6, &addr->addr6))
 	    return new;
+#endif /* HAVE_IPV6 */
 	}
 
       insert_error = 1;
@@ -1262,7 +1268,11 @@ struct crec *cache_find_by_addr(struct crec *crecp, union all_addr *addr,
 				time_t now, unsigned int prot)
 {
   struct crec *ans;
+#ifdef HAVE_IPV6
   int addrlen = (prot == F_IPV6) ? IN6ADDRSZ : INADDRSZ;
+#else
+  int addrlen = INADDRSZ;
+#endif /* HAVE_IPV6 */
   
   if (crecp) /* iterating */
     ans = crecp->next;
@@ -1458,12 +1468,14 @@ int read_hostsfile(char *filename, unsigned int index, int cache_size, struct cr
 	  addrlen = INADDRSZ;
 	  domain_suffix = get_domain(addr.addr4);
 	}
+#ifdef HAVE_IPV6
       else if (inet_pton(AF_INET6, token, &addr) > 0)
 	{
 	  flags = F_NAMEP | F_HOSTS | F_IMMORTAL | F_FORWARD | F_REVERSE | F_IPV6;
 	  addrlen = IN6ADDRSZ;
 	  domain_suffix = get_domain6(&addr.addr6);
 	}
+#endif /* HAVE_IPV6 */
       else
 	{
 	  my_syslog(LOG_ERR, _("bad address at %s line %d"), filename, lineno); 
@@ -1656,6 +1668,7 @@ void cache_reload(void)
 	    add_hosts_entry(cache, (union all_addr *)&hr->addr, INADDRSZ, SRC_CONFIG, (struct crec **)daemon->packet, revhashsz);
 	  }
 
+#ifdef HAVE_IPV6
 	if ((hr->flags & HR_6) &&
 	    (cache = get_config_crec()))
 	  {
@@ -1664,6 +1677,7 @@ void cache_reload(void)
 	    cache->flags = F_HOSTS | F_IMMORTAL | F_FORWARD | F_REVERSE | F_IPV6 | F_NAMEP | F_CONFIG;
 	    add_hosts_entry(cache, (union all_addr *)&hr->addr6, IN6ADDRSZ, SRC_CONFIG, (struct crec **)daemon->packet, revhashsz);
 	  }
+#endif /* HAVE_IPV6 */
       }
 	
   if (option_bool(OPT_NO_HOSTS) && !daemon->addn_hosts)
@@ -1763,11 +1777,13 @@ void cache_add_dhcp_entry(char *host_name, int prot,
   int in_hosts = 0;
   size_t addrlen = sizeof(struct in_addr);
 
+#ifdef HAVE_IPV6
   if (prot == AF_INET6)
     {
       flags = F_IPV6;
       addrlen = sizeof(struct in6_addr);
     }
+#endif /* HAVE_IPV6 */
   
   inet_ntop(prot, host_address, daemon->addrbuff, ADDRSTRLEN);
   
@@ -2088,8 +2104,10 @@ static void dump_cache_entry(struct crec *cache, time_t now)
       a = daemon->addrbuff;
       if (cache->flags & F_IPV4)
 	inet_ntop(AF_INET, &cache->addr, a, ADDRSTRLEN);
+#ifdef HAVE_IPV6
       else if (cache->flags & F_IPV6)
 	inet_ntop(AF_INET6, &cache->addr, a, ADDRSTRLEN);
+#endif /* HAVE_IPV6 */
     }
   
   if (cache->flags & F_IPV4)
