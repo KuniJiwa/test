@@ -133,7 +133,9 @@ static void do_dump_packet(int mask, void *packet, size_t len,
 			   union mysockaddr *src, union mysockaddr *dst, int port, int proto)
 {
   struct ip ip;
+#ifdef HAVE_IPV6
   struct ip6_hdr ip6;
+#endif /* HAVE_IPV6 */
   int family;
   struct udphdr {
     u16 uh_sport;               /* source port */
@@ -160,6 +162,7 @@ static void do_dump_packet(int mask, void *packet, size_t len,
   else
     family = dst->sa.sa_family;
 
+#ifdef HAVE_IPV6
   if (family == AF_INET6)
     {
       iphdr = &ip6;
@@ -197,6 +200,7 @@ static void do_dump_packet(int mask, void *packet, size_t len,
 	}
     }
   else
+#endif /* HAVE_IPV6 */
     {
       iphdr = &ip;
       ipsz = sizeof(ip);
