@@ -2066,13 +2066,16 @@ static void do_tcp_connection(struct listener *listener, time_t now, int slot)
 	  indextoname(listener->tcpfd, if_index, intr_name))
 	{
 	  union all_addr addr;
-
-	  got_index = 1;
 	  
+	  got_index = 1;
+
+	    addr.addr4 = tcp_addr.in.sin_addr;
+	  /* CHANGED: IPv6 address assignment conditional */
+#ifdef HAVE_IPV6
 	  if (tcp_addr.sa.sa_family == AF_INET6)
 	    addr.addr6 = tcp_addr.in6.sin6_addr;
 	  else
-	    addr.addr4 = tcp_addr.in.sin_addr;
+#endif /* HAVE_IPV6 */
 	  
 	  if (!iface_check(tcp_addr.sa.sa_family, &addr, intr_name, &auth_dns) &&
 	      !loopback_exception(listener->tcpfd, tcp_addr.sa.sa_family, &addr, intr_name))
@@ -2501,5 +2504,3 @@ int delay_dhcp(time_t start, int sec, int fd, uint32_t addr, unsigned short id)
   return 0;
 }
 #endif /* HAVE_DHCP */
-
-
