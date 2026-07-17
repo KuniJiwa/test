@@ -1604,7 +1604,10 @@ void check_servers(int no_loop_check)
 	  break;
       if (iface)
 	{
+#if 0
+/* disable warning, noisy */
 	  my_syslog(LOG_WARNING, _("ignoring nameserver %s - local interface"), daemon->namebuff);
+#endif
 	  serv->flags |= SERV_MARK;
 	  continue;
 	}
