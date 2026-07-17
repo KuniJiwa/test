@@ -23,7 +23,7 @@ jobs:
           rm -rf padavan-tmp
           ls -la patches/
 
-      - name: Set environment variables
+      - name: Define global env vars
         run: |
           echo "DNS_VER=2.93" >> $GITHUB_ENV
           echo "SRC_NAME=dnsmasq-${{ env.DNS_VER }}" >> $GITHUB_ENV
@@ -34,6 +34,8 @@ jobs:
       - name: Download source archive & SHA256 integrity verify
         run: |
           set -e
+          echo "SRC_NAME = ${{ env.SRC_NAME }}"
+          echo "SRC_FILE = ${{ env.SRC_NAME }}.${{ env.SRC_EXT }}"
           wget --retry-connrefused --waitretry=3 --timeout=15 "${{ env.SRC_URL }}"
           echo "${{ env.SRC_SHA256 }}  ${{ env.SRC_NAME }}.${{ env.SRC_EXT }}" | sha256sum -c -
           tar -Jtf "${{ env.SRC_NAME }}.${{ env.SRC_EXT }}" > /dev/null
@@ -52,7 +54,6 @@ jobs:
 
           SUCCESS_LIST=()
           FAIL_LIST=()
-          # 使用数组安全读取补丁列表
           mapfile -t PATCHES < <(ls -1 ../patches/*.patch 2>/dev/null | sort)
 
           if [[ ${#PATCHES[@]} -eq 0 ]]; then
