@@ -11,7 +11,6 @@ jobs:
         run: |
           set -e
           git config --global advice.defaultBranchName false
-          # 根目录预先创建补丁文件夹
           mkdir -p patches
           git init padavan-tmp
           cd padavan-tmp
@@ -19,7 +18,6 @@ jobs:
           git config core.sparseCheckout true
           echo "trunk/user/dnsmasq/" >> .git/info/sparse-checkout
           git pull origin sync-1 --depth=1
-          # 复制补丁到根目录patches
           cp trunk/user/dnsmasq/patches/*.patch ../patches/
           cd ..
           rm -rf padavan-tmp
@@ -29,35 +27,40 @@ jobs:
         run: |
           echo "DNS_VER=2.93" >> $GITHUB_ENV
           echo "SRC_NAME=dnsmasq-${{ env.DNS_VER }}" >> $GITHUB_ENV
-          echo "SRC_URL=https://thekelleys.org.uk/dnsmasq/${{ env.SRC_NAME }}.tar.gz" >> $GITHUB_ENV
+          echo "SRC_EXT=tar.xz" >> $GITHUB_ENV
+          echo "SRC_URL=https://thekelleys.org.uk/dnsmasq/${{ env.SRC_NAME }}.${{ env.SRC_EXT }}" >> $GITHUB_ENV
+          echo "SRC_SHA256=0C00D4E5C97C8306E5FB932B348B34269C9C29A0E7DF0E8E82958B407092BC19" >> $GITHUB_ENV
 
-      - name: Download & extract clean dnsmasq source
+      - name: Download source archive & SHA256 integrity verify
         run: |
           set -e
           wget --retry-connrefused --waitretry=3 --timeout=15 "${{ env.SRC_URL }}"
-          tar -ztf "${{ env.SRC_NAME }}.tar.gz" > /dev/null
-          tar -zxf "${{ env.SRC_NAME }}.tar.gz"
-          # 基准纯净副本
+          echo "${{ env.SRC_SHA256 }}  ${{ env.SRC_NAME }}.${{ env.SRC_EXT }}" | sha256sum -c -
+          tar -Jtf "${{ env.SRC_NAME }}.${{ env.SRC_EXT }}" > /dev/null
+          tar -Jxf "${{ env.SRC_NAME }}.${{ env.SRC_EXT }}"
           cp -r "${{ env.SRC_NAME }}" "${{ env.SRC_NAME }}.orig"
           test -d "${{ env.SRC_NAME }}/src" || exit 1
 
-      - name: Apply patches in filename ascending order
+      - name: Apply patches sorted by filename
         run: |
           set +e
           cd "${{ env.SRC_NAME }}"
           echo "# Patch Apply Summary Report" > ../patch_summary.log
           echo "Start time: $(date)" >> ../patch_summary.log
+          echo "Source archive SHA256: ${{ env.SRC_SHA256 }}" >> ../patch_summary.log
           echo "" >> ../patch_summary.log
 
           SUCCESS_LIST=()
           FAIL_LIST=()
-          PATCHES=$(ls -1 ../patches/*.patch 2>/dev/null | sort)
-          if [[ -z "${PATCHES}" ]]; then
+          # 使用数组安全读取补丁列表
+          mapfile -t PATCHES < <(ls -1 ../patches/*.patch 2>/dev/null | sort)
+
+          if [[ ${#PATCHES[@]} -eq 0 ]]; then
             echo "ERROR: No patch files found!" >> ../patch_summary.log
             exit 1
           fi
 
-          for PATCH in ${PATCHES}; do
+          for PATCH in "${PATCHES[@]}"; do
             PATCH_NAME=$(basename "${PATCH}")
             LOG_FILE="../log-${PATCH_NAME}.log"
             echo "=================================================="
@@ -82,7 +85,7 @@ jobs:
           done
 
           echo "==================== FINAL STATISTICS ====================" >> ../patch_summary.log
-          echo "Total patches: $(echo ${PATCHES} | wc -w)" >> ../patch_summary.log
+          echo "Total patches: ${#PATCHES[@]}" >> ../patch_summary.log
           echo "Success count: ${#SUCCESS_LIST[@]}" >> ../patch_summary.log
           echo "Fail/Conflict count: ${#FAIL_LIST[@]}" >> ../patch_summary.log
           echo "" >> ../patch_summary.log
