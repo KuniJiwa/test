@@ -67,8 +67,10 @@ char *netlink_init(void)
   addr.nl_pid = 0; /* autobind */
   addr.nl_groups = RTMGRP_IPV4_ROUTE;
   addr.nl_groups |= RTMGRP_IPV4_IFADDR;  
+#ifdef HAVE_IPV6
   addr.nl_groups |= RTMGRP_IPV6_ROUTE;
   addr.nl_groups |= RTMGRP_IPV6_IFADDR;
+#endif /* HAVE_IPV6 */
 
   /* May not be able to have permission to set multicast groups don't die in that case */
   if ((daemon->netlinkfd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE)) != -1)
@@ -257,6 +259,7 @@ int iface_enumerate(int family, void *parm, callback_t callback)
 		      if (!callback.af_inet(addr, ifa->ifa_index, label,  netmask, broadcast, parm))
 			callback_ok = 0;
 		  }
+#ifdef HAVE_IPV6
 		else if (ifa->ifa_family == AF_INET6)
 		  {
 		    struct in6_addr *addrp = NULL;
@@ -300,6 +303,7 @@ int iface_enumerate(int family, void *parm, callback_t callback)
 					(unsigned int)preferred, (unsigned int)valid, parm))
 			callback_ok = 0;
 		  }
+#endif /* HAVE_IPV6 */
 	      }
 	  }
 	else if (h->nlmsg_type == RTM_NEWNEIGH && family == AF_UNSPEC)
