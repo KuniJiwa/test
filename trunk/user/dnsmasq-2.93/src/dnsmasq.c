@@ -2066,15 +2066,14 @@ static void do_tcp_connection(struct listener *listener, time_t now, int slot)
 	  indextoname(listener->tcpfd, if_index, intr_name))
 	{
 	  union all_addr addr;
-	  
-	  got_index = 1;
 
-	    addr.addr4 = tcp_addr.in.sin_addr;
-	  /* CHANGED: IPv6 address assignment conditional */
+	  got_index = 1;
+	  
+	  /* CHANGED: IPv4 assignment moved outside, IPv6 conditional */
+	  addr.addr4 = tcp_addr.in.sin_addr;
 #ifdef HAVE_IPV6
 	  if (tcp_addr.sa.sa_family == AF_INET6)
 	    addr.addr6 = tcp_addr.in6.sin6_addr;
-	  else
 #endif /* HAVE_IPV6 */
 	  
 	  if (!iface_check(tcp_addr.sa.sa_family, &addr, intr_name, &auth_dns) &&
