@@ -7,82 +7,91 @@ jobs:
   patch-test:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch all original patches from KuniJiwa/padavan sync-1
+      - name: Fetch original patches from KuniJiwa/padavan sync-1
         run: |
+          set -e
+          git config --global advice.defaultBranchName false
+          # 根目录预先创建补丁文件夹
+          mkdir -p patches
           git init padavan-tmp
           cd padavan-tmp
           git remote add origin https://github.com/KuniJiwa/padavan.git
           git config core.sparseCheckout true
           echo "trunk/user/dnsmasq/" >> .git/info/sparse-checkout
           git pull origin sync-1 --depth=1
-          mkdir -p patches
+          # 复制补丁到根目录patches
           cp trunk/user/dnsmasq/patches/*.patch ../patches/
           cd ..
           rm -rf padavan-tmp
           ls -la patches/
 
-      - name: Set env variables
+      - name: Set environment variables
         run: |
           echo "DNS_VER=2.93" >> $GITHUB_ENV
           echo "SRC_NAME=dnsmasq-${{ env.DNS_VER }}" >> $GITHUB_ENV
           echo "SRC_URL=https://thekelleys.org.uk/dnsmasq/${{ env.SRC_NAME }}.tar.gz" >> $GITHUB_ENV
 
-      - name: Download & extract clean full source code
+      - name: Download & extract clean dnsmasq source
         run: |
           set -e
-          wget --retry-connrefused --waitretry=3 --timeout=15 ${{ env.SRC_URL }}
-          tar -ztf ${{ env.SRC_NAME }}.tar.gz > /dev/null
-          tar -zxf ${{ env.SRC_NAME }}.tar.gz
-          cp -r ${{ env.SRC_NAME }} ${{ env.SRC_NAME }}.orig
-          ls -ld ${{ env.SRC_NAME }} src/config.h || exit 1
+          wget --retry-connrefused --waitretry=3 --timeout=15 "${{ env.SRC_URL }}"
+          tar -ztf "${{ env.SRC_NAME }}.tar.gz" > /dev/null
+          tar -zxf "${{ env.SRC_NAME }}.tar.gz"
+          # 基准纯净副本
+          cp -r "${{ env.SRC_NAME }}" "${{ env.SRC_NAME }}.orig"
+          test -d "${{ env.SRC_NAME }}/src" || exit 1
 
-      - name: Apply patches sequentially in filename order
+      - name: Apply patches in filename ascending order
         run: |
           set +e
-          cd ${{ env.SRC_NAME }}
+          cd "${{ env.SRC_NAME }}"
           echo "# Patch Apply Summary Report" > ../patch_summary.log
           echo "Start time: $(date)" >> ../patch_summary.log
           echo "" >> ../patch_summary.log
 
           SUCCESS_LIST=()
           FAIL_LIST=()
-          PATCHES=$(ls -1 ../patches/*.patch | sort)
+          PATCHES=$(ls -1 ../patches/*.patch 2>/dev/null | sort)
+          if [[ -z "${PATCHES}" ]]; then
+            echo "ERROR: No patch files found!" >> ../patch_summary.log
+            exit 1
+          fi
 
-          for PATCH in $PATCHES; do
-            PATCH_NAME=$(basename "$PATCH")
+          for PATCH in ${PATCHES}; do
+            PATCH_NAME=$(basename "${PATCH}")
             LOG_FILE="../log-${PATCH_NAME}.log"
             echo "=================================================="
-            echo "Applying: $PATCH_NAME"
+            echo "Applying: ${PATCH_NAME}"
             echo "==================================================" >> ../patch_summary.log
-            echo "Patch: $PATCH_NAME" >> ../patch_summary.log
+            echo "Patch: ${PATCH_NAME}" >> ../patch_summary.log
 
-            patch -p1 --dry-run < "$PATCH" > "$LOG_FILE" 2>&1
-            patch -p1 --no-backup-if-mismatch < "$PATCH" >> "$LOG_FILE" 2>&1
+            patch -p1 --dry-run < "${PATCH}" > "${LOG_FILE}" 2>&1
+            patch -p1 --no-backup-if-mismatch < "${PATCH}" >> "${LOG_FILE}" 2>&1
             APPLY_RC=$?
 
-            if [ $APPLY_RC -eq 0 ]; then
-              echo "✅ SUCCESS: $PATCH_NAME"
+            if [[ ${APPLY_RC} -eq 0 ]]; then
+              echo "✅ SUCCESS: ${PATCH_NAME}"
               echo "Status: SUCCESS" >> ../patch_summary.log
-              SUCCESS_LIST+=("$PATCH_NAME")
+              SUCCESS_LIST+=("${PATCH_NAME}")
             else
-              echo "❌ FAILED/CONFLICT: $PATCH_NAME"
+              echo "❌ FAILED/CONFLICT: ${PATCH_NAME}"
               echo "Status: FAILED / CONFLICT" >> ../patch_summary.log
-              FAIL_LIST+=("$PATCH_NAME")
+              FAIL_LIST+=("${PATCH_NAME}")
             fi
             echo "" >> ../patch_summary.log
           done
 
           echo "==================== FINAL STATISTICS ====================" >> ../patch_summary.log
-          echo "Total patches: $(echo $PATCHES | wc -w)" >> ../patch_summary.log
+          echo "Total patches: $(echo ${PATCHES} | wc -w)" >> ../patch_summary.log
           echo "Success count: ${#SUCCESS_LIST[@]}" >> ../patch_summary.log
           echo "Fail/Conflict count: ${#FAIL_LIST[@]}" >> ../patch_summary.log
           echo "" >> ../patch_summary.log
 
-          if [ ${#SUCCESS_LIST[@]} -gt 0 ]; then
+          if [[ ${#SUCCESS_LIST[@]} -gt 0 ]]; then
             echo "Success list:" >> ../patch_summary.log
             printf ' - %s\n' "${SUCCESS_LIST[@]}" >> ../patch_summary.log
           fi
-          if [ ${#FAIL_LIST[@]} -gt 0 ]; then
+          if [[ ${#FAIL_LIST[@]} -gt 0 ]]; then
             echo "" >> ../patch_summary.log
             echo "Failed / Conflict list:" >> ../patch_summary.log
             printf ' - %s\n' "${FAIL_LIST[@]}" >> ../patch_summary.log
@@ -93,17 +102,17 @@ jobs:
         id: conflict_scan
         run: |
           echo "==================== CONFLICT SCAN RESULT ===================="
-          REJ_FILES=$(find ${{ env.SRC_NAME }} -type f -name "*.rej")
-          echo "$REJ_FILES" > conflict_list.txt
+          REJ_FILES=$(find "${{ env.SRC_NAME }}" -type f -name "*.rej")
+          echo "${REJ_FILES}" > conflict_list.txt
 
-          if [ -z "$REJ_FILES" ]; then
+          if [[ -z "${REJ_FILES}" ]]; then
             echo "✅ No .rej conflict files found"
             echo "has_conflict=false" >> $GITHUB_ENV
           else
             echo "❌ Detected conflict .rej files:"
-            echo "$REJ_FILES"
+            echo "${REJ_FILES}"
             echo "has_conflict=true" >> $GITHUB_ENV
-            for f in $REJ_FILES; do
+            for f in ${REJ_FILES}; do
               echo "------------------------------------------------"
               echo "Conflict file: $f"
               head -20 "$f"
@@ -122,11 +131,11 @@ jobs:
             ${{ env.SRC_NAME }}.orig/
           retention-days: 14
 
-      - name: Print final summary banner
+      - name: Output final summary
         run: |
           cat patch_summary.log
           if [[ "${{ env.has_conflict }}" == "true" ]]; then
-            echo "::warning::存在补丁冲突，请下载artifact查看 *.rej 与单补丁日志"
+            echo "::warning::存在补丁冲突，请下载artifact查看 *.rej 和独立补丁日志"
           else
-            echo "::success::🎉 所有补丁无冲突"
+            echo "::success::🎉 全部补丁应用无冲突"
           fi
