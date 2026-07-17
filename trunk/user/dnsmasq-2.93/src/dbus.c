@@ -193,6 +193,18 @@ static DBusMessage* dbus_read_servers(DBusMessage *message)
 	  unsigned char p[sizeof(struct in6_addr)];
 	  unsigned int i;
 
+	  /* CHANGED: if no IPv6 support, log warning and skip */
+#ifndef HAVE_IPV6
+	  my_syslog(LOG_WARNING, _("attempt to set an IPv6 server address via DBus - no IPv6 support"));
+	  skip = 1;
+	  /* consume all bytes in the array */
+	  for(i = 0; i < sizeof(struct in6_addr); i++)
+	    {
+	      unsigned char tmp;
+	      dbus_message_iter_get_basic(&iter, &tmp);
+	      dbus_message_iter_next (&iter);
+	    }
+#else
 	  skip = 1;
 
 	  for(i = 0; i < sizeof(struct in6_addr); i++)
@@ -220,6 +232,7 @@ static DBusMessage* dbus_read_servers(DBusMessage *message)
               source_addr.in6.sin6_port = htons(daemon->query_port);
 	      skip = 0;
 	    }
+#endif /* HAVE_IPV6 */
 	}
       else
 	/* At the end */
@@ -694,8 +707,8 @@ static DBusMessage *dbus_del_lease(DBusMessage* message)
   if ((reply = dbus_message_new_method_return(message)))
     dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &ret,
 			     DBUS_TYPE_INVALID);
-  
     
+  
   return reply;
 }
 #endif
