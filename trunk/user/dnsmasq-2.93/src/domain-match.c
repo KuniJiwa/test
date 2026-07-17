@@ -682,10 +682,13 @@ int add_update_server(int flags,
   if (flags & SERV_IS_LOCAL)
     {
       size_t size;
-      
+
+#ifdef HAVE_IPV6
       if (flags & SERV_6ADDR)
 	size = sizeof(struct serv_addr6);
-      else if (flags & SERV_4ADDR)
+      else
+#endif /* HAVE_IPV6 */
+      if (flags & SERV_4ADDR)
 	size = sizeof(struct serv_addr4);
       else
 	size = sizeof(struct serv_local);
@@ -702,8 +705,10 @@ int add_update_server(int flags,
       if (flags & SERV_4ADDR)
 	((struct serv_addr4*)serv)->addr = local_addr->addr4;
       
+#ifdef HAVE_IPV6
       if (flags & SERV_6ADDR)
 	((struct serv_addr6*)serv)->addr = local_addr->addr6;
+#endif /* HAVE_IPV6 */
     }
   else
     { 
@@ -778,4 +783,3 @@ int add_update_server(int flags,
     
   return 1;
 }
-
