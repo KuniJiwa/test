@@ -31,10 +31,8 @@ jobs:
         run: |
           set -e
           wget --retry-connrefused --waitretry=3 --timeout=15 ${{ env.SRC_URL }}
-          # 校验压缩包是否合法
           tar -ztf ${{ env.SRC_NAME }}.tar.gz > /dev/null
           tar -zxf ${{ env.SRC_NAME }}.tar.gz
-          # 创建纯净基准副本orig
           cp -r ${{ env.SRC_NAME }} ${{ env.SRC_NAME }}.orig
           ls -ld ${{ env.SRC_NAME }} src/config.h || exit 1
 
@@ -89,9 +87,7 @@ jobs:
             echo "Failed / Conflict list:" >> ../patch_summary.log
             printf ' - %s\n' "${FAIL_LIST[@]}" >> ../patch_summary.log
           fi
-
           cd ..
-          diff -urN ${{ env.SRC_NAME }}.orig ${{ env.SRC_NAME }} > all-patches-combined-${{ env.SRC_NAME }}.patch || true
 
       - name: Scan all *.rej conflict files
         id: conflict_scan
@@ -121,7 +117,6 @@ jobs:
           path: |
             *.log
             *.txt
-            all-patches-combined-*.patch
             patches/
             ${{ env.SRC_NAME }}/
             ${{ env.SRC_NAME }}.orig/
@@ -133,5 +128,5 @@ jobs:
           if [[ "${{ env.has_conflict }}" == "true" ]]; then
             echo "::warning::存在补丁冲突，请下载artifact查看 *.rej 与单补丁日志"
           else
-            echo "::success::🎉 所有补丁无冲突，叠加总补丁 all-patches-combined-${{ env.SRC_NAME }}.patch 已生成"
+            echo "::success::🎉 所有补丁无冲突"
           fi
