@@ -1310,7 +1310,7 @@ extern struct daemon {
   int inotifyfd;
 #endif
 #if defined(HAVE_LINUX_NETWORK)
-  int netlinkfd, kernel_version;
+  int netlinkfd;
 #elif defined(HAVE_BSD_NETWORK)
   int dhcp_raw_fd, dhcp_icmp_fd, routefd;
 #endif
@@ -1544,9 +1544,6 @@ int read_writev(int fd, struct iovec *iov, int iovcnt, int rw);
 void close_fds(long max_fd, int spare1, int spare2, int spare3);
 int wildcard_match(const char* wildcard, const char* match);
 int wildcard_matchn(const char* wildcard, const char* match, int num);
-#ifdef HAVE_LINUX_NETWORK
-int kernel_version(void);
-#endif
 
 /* log.c */
 void die(char *message, char *arg1, int exit_code) ATTRIBUTE_NORETURN;
@@ -1978,4 +1975,4 @@ int add_update_server(int flags,
 		      union mysockaddr *source_addr,
 		      const char *interface,
 		      const char *domain,
-		      union all_addr *local_addr); 
+		      union all_addr *local_addr);
