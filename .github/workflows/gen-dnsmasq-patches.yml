@@ -60,7 +60,7 @@ jobs:
             echo "# Modified files: src/config.h"
             echo "# Load order: 200"
             echo ""
-            git diff 410db69..HEAD --relative=trunk/user/dnsmasq-2.93 -- src/config.h
+            git show 48ffcdd --relative=trunk/user/dnsmasq-2.93 -- src/config.h
           } > patches/200-config-memory-param-tune.patch
 
       - name: Download official dnsmasq 2.93 source
