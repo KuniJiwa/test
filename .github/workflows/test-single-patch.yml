@@ -1,0 +1,63 @@
+name: Test single patch compile
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create patches directory
+        run: mkdir -p trunk/user/dnsmasq-2.93/patches
+
+      - name: Generate single patch (all changes)
+        run: |
+          cd trunk/user/dnsmasq-2.93
+          git diff 410db69..HEAD --relative=trunk/user/dnsmasq-2.93 > patches/all-changes.patch
+
+      - name: Download official dnsmasq 2.93 source
+        run: |
+          wget https://thekelleys.org.uk/dnsmasq/dnsmasq-2.93.tar.xz -O /tmp/dnsmasq-2.93.tar.xz
+          tar -xf /tmp/dnsmasq-2.93.tar.xz -C /tmp
+          cp -r /tmp/dnsmasq-2.93 /tmp/dnsmasq-2.93-test
+
+      - name: Apply patch
+        id: apply
+        continue-on-error: true
+        shell: bash
+        run: |
+          cd /tmp/dnsmasq-2.93-test
+          mkdir -p /tmp/results
+          patch -p1 < "${{ github.workspace }}/trunk/user/dnsmasq-2.93/patches/all-changes.patch" 2>&1 | tee /tmp/results/patch.log
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "PATCH_FAILED=1" >> $GITHUB_ENV
+          fi
+
+      - name: Compile
+        if: always()
+        run: |
+          cd /tmp/dnsmasq-2.93-test
+          make 2>&1 | tee /tmp/results/compile.log
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "COMPILE_FAILED=1" >> $GITHUB_ENV
+          fi
+
+      - name: Prepare artifact
+        if: always()
+        run: |
+          mkdir -p artifact/results
+          cp /tmp/results/* artifact/results/
+          # 如果补丁有 .rej 也收集
+          find /tmp/dnsmasq-2.93-test -name "*.rej" -exec cp --parents {} artifact/results/ \; 2>/dev/null || true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: artifact/
