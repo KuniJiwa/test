@@ -20,7 +20,7 @@ jobs:
           cd trunk/user/dnsmasq-2.93
           count=1
           for commit in 72bd13f 5a5714d c511176 a53c300 6ea747b b238c92; do
-            git format-patch -1 $commit --stdout > patches/001-$(printf "%02d" $count)-${commit}.patch
+            git format-patch -1 $commit --stdout --relative=trunk/user/dnsmasq-2.93 > patches/001-$(printf "%02d" $count)-${commit}.patch
             count=$((count+1))
           done
 
@@ -29,7 +29,7 @@ jobs:
           cd trunk/user/dnsmasq-2.93
           count=1
           for commit in 0b406b7 9fc8049 098a42b 3824e09; do
-            git format-patch -1 $commit --stdout > patches/100-$(printf "%02d" $count)-${commit}.patch
+            git format-patch -1 $commit --stdout --relative=trunk/user/dnsmasq-2.93 > patches/100-$(printf "%02d" $count)-${commit}.patch
             count=$((count+1))
           done
 
@@ -38,14 +38,14 @@ jobs:
           cd trunk/user/dnsmasq-2.93
           count=1
           for commit in 7439642 45177e2 cf9ad23 47d1045 59a431a abf2632 6828486 1b04903 891b4e7 58c8a4b 25c8403 f51ab0a 3ce94c9 922e750 4ee6e3f 87b7df4 8dc5424 4d84ab8 af4dc68 f6b1019 7407d55 0b19552 ed90a5f 3c515c0; do
-            git format-patch -1 $commit --stdout > patches/112-$(printf "%02d" $count)-${commit}.patch
+            git format-patch -1 $commit --stdout --relative=trunk/user/dnsmasq-2.93 > patches/112-$(printf "%02d" $count)-${commit}.patch
             count=$((count+1))
           done
 
       - name: Generate 200 patches (1 commit)
         run: |
           cd trunk/user/dnsmasq-2.93
-          git format-patch -1 48ffcdd --stdout > patches/200-01-48ffcdd.patch
+          git format-patch -1 48ffcdd --stdout --relative=trunk/user/dnsmasq-2.93 > patches/200-01-48ffcdd.patch
 
       - name: Download official dnsmasq 2.93 source
         run: |
@@ -68,7 +68,7 @@ jobs:
               echo "=== Applying ${PREFIX} patches ==="
               for f in ${{ github.workspace }}/trunk/user/dnsmasq-2.93/patches/${PREFIX}-*.patch; do
                 echo "Applying: $(basename $f)"
-                patch -N -p1 < "$f" 2>&1 || true
+                patch -p1 < "$f" 2>&1 || true
                 echo ""
               done
             done
