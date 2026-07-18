@@ -77,7 +77,11 @@ jobs:
             find . -name "*.rej" -exec cp --parents {} /tmp/patch-results/ \; 2>/dev/null || true
             echo ""
             REJ_COUNT=$(find . -name "*.rej" | wc -l)
-            echo "=== STATUS: $([ ${REJ_COUNT} -eq 0 ] && echo SUCCESS || echo FAILED - ${REJ_COUNT} reject(s)) ==="
+            if [ ${REJ_COUNT} -eq 0 ]; then
+              echo "=== STATUS: SUCCESS ==="
+            else
+              echo "=== STATUS: FAILED - ${REJ_COUNT} reject(s) ==="
+            fi
             echo "End: $(date)"
           } | tee /tmp/patch-results/patch-apply.log
 
