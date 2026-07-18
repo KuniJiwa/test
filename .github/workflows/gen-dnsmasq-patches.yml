@@ -18,35 +18,50 @@ jobs:
       - name: Generate 001 patch
         run: |
           cd trunk/user/dnsmasq-2.93
-          # 001：把 6 个 commit 逐个拿出来合并成一个补丁
-          git format-patch -1 72bd13f --stdout --relative=trunk/user/dnsmasq-2.93 >> patches/001-dnsmasq-orig.patch 2>/dev/null || true
-          git format-patch -1 5a5714d --stdout --relative=trunk/user/dnsmasq-2.93 >> patches/001-dnsmasq-orig.patch 2>/dev/null || true
-          git format-patch -1 c511176 --stdout --relative=trunk/user/dnsmasq-2.93 >> patches/001-dnsmasq-orig.patch 2>/dev/null || true
-          git format-patch -1 a53c300 --stdout --relative=trunk/user/dnsmasq-2.93 >> patches/001-dnsmasq-orig.patch 2>/dev/null || true
-          git format-patch -1 6ea747b --stdout --relative=trunk/user/dnsmasq-2.93 >> patches/001-dnsmasq-orig.patch 2>/dev/null || true
-          git format-patch -1 b238c92 --stdout --relative=trunk/user/dnsmasq-2.93 >> patches/001-dnsmasq-orig.patch 2>/dev/null || true
+          {
+            echo "# Patch: 001-base-dhcp-network-adapt.patch"
+            echo "# Description: Base DHCP and network adaptation for padavan"
+            echo "# Modified files: Makefile、src/config.h、src/lease.c、src/network.c、src/rfc2131.c、src/rfc3315.c"
+            echo "# Load order: 001"
+            echo ""
+            git diff 410db69..b238c92 --relative=trunk/user/dnsmasq-2.93
+          } > patches/001-base-dhcp-network-adapt.patch
 
       - name: Generate 100 patch
         run: |
           cd trunk/user/dnsmasq-2.93
-          # 100：把 4 个 commit 逐个拿出来合并成一个补丁
-          git format-patch -1 0b406b7 --stdout --relative=trunk/user/dnsmasq-2.93 >> patches/100-remove-old-runtime-kernel-support.patch 2>/dev/null || true
-          git format-patch -1 9fc8049 --stdout --relative=trunk/user/dnsmasq-2.93 >> patches/100-remove-old-runtime-kernel-support.patch 2>/dev/null || true
-          git format-patch -1 098a42b --stdout --relative=trunk/user/dnsmasq-2.93 >> patches/100-remove-old-runtime-kernel-support.patch 2>/dev/null || true
-          git format-patch -1 3824e09 --stdout --relative=trunk/user/dnsmasq-2.93 >> patches/100-remove-old-runtime-kernel-support.patch 2>/dev/null || true
+          {
+            echo "# Patch: 100-mainfile-kernel-ipv6-fix.patch"
+            echo "# Description: Remove old kernel support + add IPv6 entry in main file"
+            echo "# Modified files: src/dnsmasq.c"
+            echo "# Load order: 100"
+            echo ""
+            git diff b238c92..891b4e7 --relative=trunk/user/dnsmasq-2.93
+          } > patches/100-mainfile-kernel-ipv6-fix.patch
 
       - name: Generate 112 patch
         run: |
           cd trunk/user/dnsmasq-2.93
-          # 112：把 24 个 commit 逐个拿出来合并成一个补丁
-          for commit in 7439642 45177e2 cf9ad23 47d1045 59a431a abf2632 6828486 1b04903 891b4e7 58c8a4b 25c8403 f51ab0a 3ce94c9 922e750 4ee6e3f 87b7df4 8dc5424 4d84ab8 af4dc68 f6b1019 7407d55 0b19552 ed90a5f 3c515c0; do
-            git format-patch -1 $commit --stdout --relative=trunk/user/dnsmasq-2.93 >> patches/112-add-back-ability-to-compile-without-IPv6-support.patch 2>/dev/null || true
-          done
+          {
+            echo "# Patch: 112-other-ipv6-compile-switch.patch"
+            echo "# Description: Add HAVE_IPV6 conditional compilation for all src files except dnsmasq.c"
+            echo "# Modified files: src/arp.c、src/auth.c、src/bpf.c、src/cache.c、src/config.h、src/conntrack.c、src/dbus.c、src/dnsmasq.h、src/domain-match.c、src/domain.c、src/dump.c、src/edns0.c、src/forward.c、src/helper.c、src/ipset.c、src/netlink.c、src/network.c、src/option.c、src/rfc1035.c、src/tables.c、src/tftp.c、src/util.c"
+            echo "# Load order: 112"
+            echo ""
+            git diff 891b4e7..8dc5424 --relative=trunk/user/dnsmasq-2.93
+          } > patches/112-other-ipv6-compile-switch.patch
 
       - name: Generate 200 patch
         run: |
           cd trunk/user/dnsmasq-2.93
-          git format-patch -1 48ffcdd --stdout --relative=trunk/user/dnsmasq-2.93 > patches/200-set-MAX_PROCS-to-4-to-reduce-memory-usage.patch
+          {
+            echo "# Patch: 200-config-memory-param-tune.patch"
+            echo "# Description: Reduce MAX_PROCS from 20 to 4 to lower memory usage"
+            echo "# Modified files: src/config.h"
+            echo "# Load order: 200"
+            echo ""
+            git diff 8dc5424..48ffcdd --relative=trunk/user/dnsmasq-2.93
+          } > patches/200-config-memory-param-tune.patch
 
       - name: Download official dnsmasq 2.93 source
         run: |
@@ -65,7 +80,7 @@ jobs:
             echo "=== PATCH APPLICATION LOG ==="
             echo "Start: $(date)"
             echo ""
-            for PATCH in 001-dnsmasq-orig.patch 100-remove-old-runtime-kernel-support.patch 112-add-back-ability-to-compile-without-IPv6-support.patch 200-set-MAX_PROCS-to-4-to-reduce-memory-usage.patch; do
+            for PATCH in 001-base-dhcp-network-adapt.patch 100-mainfile-kernel-ipv6-fix.patch 112-other-ipv6-compile-switch.patch 200-config-memory-param-tune.patch; do
               echo "=== Applying ${PATCH} ==="
               patch -p1 --fuzz=3 < "${{ github.workspace }}/trunk/user/dnsmasq-2.93/patches/${PATCH}" 2>&1 || true
               echo ""
