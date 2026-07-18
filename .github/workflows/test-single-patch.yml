@@ -18,7 +18,7 @@ jobs:
       - name: Generate single patch (all changes)
         run: |
           cd trunk/user/dnsmasq-2.93
-          git diff 410db69..HEAD --relative=trunk/user/dnsmasq-2.93 > patches/all-changes.patch
+          git diff 410db69..HEAD --relative=trunk/user/dnsmasq-2.93 > patches/000-all-changes.patch
 
       - name: Download official dnsmasq 2.93 source
         run: |
@@ -33,7 +33,7 @@ jobs:
         run: |
           cd /tmp/dnsmasq-2.93-test
           mkdir -p /tmp/results
-          patch -p1 < "${{ github.workspace }}/trunk/user/dnsmasq-2.93/patches/all-changes.patch" 2>&1 | tee /tmp/results/patch.log
+          patch -p1 < "${{ github.workspace }}/trunk/user/dnsmasq-2.93/patches/000-all-changes.patch" 2>&1 | tee /tmp/results/patch.log
           if [ ${PIPESTATUS[0]} -ne 0 ]; then
             echo "PATCH_FAILED=1" >> $GITHUB_ENV
           fi
@@ -50,9 +50,9 @@ jobs:
       - name: Prepare artifact
         if: always()
         run: |
-          mkdir -p artifact/results
+          mkdir -p artifact/patches artifact/results
+          cp trunk/user/dnsmasq-2.93/patches/000-all-changes.patch artifact/patches/
           cp /tmp/results/* artifact/results/
-          # 如果补丁有 .rej 也收集
           find /tmp/dnsmasq-2.93-test -name "*.rej" -exec cp --parents {} artifact/results/ \; 2>/dev/null || true
 
       - name: Upload artifact
