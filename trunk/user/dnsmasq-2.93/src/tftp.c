@@ -104,7 +104,7 @@ static void tftp_request(char *packet, ssize_t plen, struct listener *listen, ti
 #endif
   
   /* Can always get recvd interface for IPv6 */
-  if (!check_dst)
+  if (!check_dest)
     {
       if (listen->iface)
 	{
