@@ -3791,7 +3791,7 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
 	  {
 	    for (cp = arg; *cp; cp++)
 	      if (!(*cp == ' ' || *cp == '.' || *cp == ':' || 
-		    (*cp >= 'a' && cp <= 'f') || (*cp >= 'A' && cp <= 'F') ||
+		    (*cp >= 'a' && *cp <= 'f') || (*cp >= 'A' && *cp <= 'F') ||
 		    (*cp >='0' && *cp <= '9')))
 		break;
 	    
