@@ -56,45 +56,30 @@ jobs:
       - name: Apply patches and collect results
         id: apply
         continue-on-error: true
+        shell: bash
         run: |
           cd /tmp/dnsmasq-2.93-test
           mkdir -p /tmp/patch-results
-          exec > >(tee -a /tmp/patch-results/patch-apply.log)
-          exec 2>&1
-          echo "=== PATCH APPLICATION LOG ==="
-          echo "Start: $(date)"
-          echo ""
-          echo "=== Applying 001 patches ==="
-          for f in ${{ github.workspace }}/trunk/user/dnsmasq-2.93/patches/001-*.patch; do
-            echo "Applying: $(basename $f)"
-            patch -p1 < "$f" || true
+          {
+            echo "=== PATCH APPLICATION LOG ==="
+            echo "Start: $(date)"
             echo ""
-          done
-          echo "=== Applying 100 patches ==="
-          for f in ${{ github.workspace }}/trunk/user/dnsmasq-2.93/patches/100-*.patch; do
-            echo "Applying: $(basename $f)"
-            patch -p1 < "$f" || true
+            for PREFIX in 001 100 112 200; do
+              echo "=== Applying ${PREFIX} patches ==="
+              for f in ${{ github.workspace }}/trunk/user/dnsmasq-2.93/patches/${PREFIX}-*.patch; do
+                echo "Applying: $(basename $f)"
+                patch -N -p1 < "$f" 2>&1 || true
+                echo ""
+              done
+            done
+            echo "=== REJECT FILES ==="
+            find . -name "*.rej" -print
+            find . -name "*.rej" -exec cp --parents {} /tmp/patch-results/ \; 2>/dev/null || true
             echo ""
-          done
-          echo "=== Applying 112 patches ==="
-          for f in ${{ github.workspace }}/trunk/user/dnsmasq-2.93/patches/112-*.patch; do
-            echo "Applying: $(basename $f)"
-            patch -p1 < "$f" || true
-            echo ""
-          done
-          echo "=== Applying 200 patches ==="
-          for f in ${{ github.workspace }}/trunk/user/dnsmasq-2.93/patches/200-*.patch; do
-            echo "Applying: $(basename $f)"
-            patch -p1 < "$f" || true
-            echo ""
-          done
-          echo "=== REJECT FILES ==="
-          find . -name "*.rej" -print
-          find . -name "*.rej" -exec cp --parents {} /tmp/patch-results/ \; 2>/dev/null || true
-          echo ""
-          REJ_COUNT=$(find . -name "*.rej" | wc -l)
-          echo "=== STATUS: $([ ${REJ_COUNT} -eq 0 ] && echo SUCCESS || echo FAILED - ${REJ_COUNT} reject(s)) ==="
-          echo "End: $(date)"
+            REJ_COUNT=$(find . -name "*.rej" | wc -l)
+            echo "=== STATUS: $([ ${REJ_COUNT} -eq 0 ] && echo SUCCESS || echo FAILED - ${REJ_COUNT} reject(s)) ==="
+            echo "End: $(date)"
+          } | tee /tmp/patch-results/patch-apply.log
 
       - name: Upload patches
         uses: actions/upload-artifact@v4
