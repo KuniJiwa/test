@@ -85,14 +85,14 @@ jobs:
             echo "End: $(date)"
           } | tee /tmp/patch-results/patch-apply.log
 
-      - name: Upload patches
-        uses: actions/upload-artifact@v4
-        with:
-          name: dnsmasq-patches
-          path: trunk/user/dnsmasq-2.93/patches/*.patch
+      - name: Prepare single artifact
+        run: |
+          mkdir -p artifact/patches artifact/logs
+          cp trunk/user/dnsmasq-2.93/patches/* artifact/patches/
+          cp -r /tmp/patch-results/* artifact/logs/
 
-      - name: Upload verification logs and rejects
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: verify-logs
-          path: /tmp/patch-results/
+          name: dnsmasq-artifact
+          path: artifact/
