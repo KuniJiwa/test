@@ -1,112 +1,61 @@
-name: Generate and verify dnsmasq patches
+name: Build Firmware
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
+    name: Build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [K2P, K2P-USB]
+        toolchain: [mipsel-linux-musl]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@main
         with:
-          fetch-depth: 0
-
-      - name: Create patches directory
-        run: mkdir -p trunk/user/dnsmasq-2.93/patches
-
-      - name: Generate 001 patch
-        run: |
-          cd trunk/user/dnsmasq-2.93
-          {
-            echo "# Patch: 001-base-dhcp-network-adapt.patch"
-            echo "# Description: Base DHCP and network adaptation for padavan"
-            echo "# Modified files: Makefile、src/config.h、src/lease.c、src/network.c、src/rfc2131.c、src/rfc3315.c"
-            echo "# Load order: 001"
-            echo ""
-            git diff 410db69..b238c92 --relative=trunk/user/dnsmasq-2.93
-          } > patches/001-base-dhcp-network-adapt.patch
-
-      - name: Generate 100 patch
-        run: |
-          cd trunk/user/dnsmasq-2.93
-          {
-            echo "# Patch: 100-mainfile-kernel-ipv6-fix.patch"
-            echo "# Description: Remove old kernel support + add IPv6 entry in main file"
-            echo "# Modified files: src/dnsmasq.c"
-            echo "# Load order: 100"
-            echo ""
-            git diff b238c92..891b4e7 --relative=trunk/user/dnsmasq-2.93
-          } > patches/100-mainfile-kernel-ipv6-fix.patch
-
-      - name: Generate 112 patch
-        run: |
-          cd trunk/user/dnsmasq-2.93
-          {
-            echo "# Patch: 112-other-ipv6-compile-switch.patch"
-            echo "# Description: Add HAVE_IPV6 conditional compilation for all src files except dnsmasq.c"
-            echo "# Modified files: src/arp.c、src/auth.c、src/bpf.c、src/cache.c、src/config.h、src/conntrack.c、src/dbus.c、src/dnsmasq.h、src/domain-match.c、src/domain.c、src/dump.c、src/edns0.c、src/forward.c、src/helper.c、src/ipset.c、src/netlink.c、src/network.c、src/option.c、src/rfc1035.c、src/tables.c、src/tftp.c、src/util.c"
-            echo "# Load order: 112"
-            echo ""
-            git diff 891b4e7..8dc5424 --relative=trunk/user/dnsmasq-2.93
-          } > patches/112-other-ipv6-compile-switch.patch
-
-      - name: Generate 200 patch
-        run: |
-          cd trunk/user/dnsmasq-2.93
-          {
-            echo "# Patch: 200-config-memory-param-tune.patch"
-            echo "# Description: Reduce MAX_PROCS from 20 to 4 to lower memory usage"
-            echo "# Modified files: src/config.h"
-            echo "# Load order: 200"
-            echo ""
-            git diff 8dc5424..48ffcdd --relative=trunk/user/dnsmasq-2.93
-          } > patches/200-config-memory-param-tune.patch
-
-      - name: Download official dnsmasq 2.93 source
-        run: |
-          wget https://thekelleys.org.uk/dnsmasq/dnsmasq-2.93.tar.xz -O /tmp/dnsmasq-2.93.tar.xz
-          echo "0c00d4e5c97c8306e5fb932b348b34269c9c29a0e7df0e8e82958b407092bc19  /tmp/dnsmasq-2.93.tar.xz" | sha256sum --check
-          tar -xf /tmp/dnsmasq-2.93.tar.xz -C /tmp
-          cp -r /tmp/dnsmasq-2.93 /tmp/dnsmasq-2.93-test
-
-      - name: Apply patches and collect results
-        id: apply
-        continue-on-error: true
-        shell: bash
-        run: |
-          cd /tmp/dnsmasq-2.93-test
-          mkdir -p /tmp/patch-results
-          {
-            echo "=== PATCH APPLICATION LOG ==="
-            echo "Start: $(date)"
-            echo ""
-            for PATCH in 001-base-dhcp-network-adapt.patch 100-mainfile-kernel-ipv6-fix.patch 112-other-ipv6-compile-switch.patch 200-config-memory-param-tune.patch; do
-              echo "=== Applying ${PATCH} ==="
-              patch -p1 < "${{ github.workspace }}/trunk/user/dnsmasq-2.93/patches/${PATCH}" 2>&1 || true
-              echo ""
-            done
-            echo "=== REJECT FILES ==="
-            find . -name "*.rej" -print
-            find . -name "*.rej" -exec cp --parents {} /tmp/patch-results/ \; 2>/dev/null || true
-            echo ""
-            REJ_COUNT=$(find . -name "*.rej" | wc -l)
-            if [ ${REJ_COUNT} -eq 0 ]; then
-              echo "=== STATUS: SUCCESS ==="
-            else
-              echo "=== STATUS: FAILED - ${REJ_COUNT} reject(s) ==="
-            fi
-            echo "End: $(date)"
-          } | tee /tmp/patch-results/patch-apply.log
-
-      - name: Prepare single artifact
-        run: |
-          mkdir -p artifact/patches artifact/logs
-          cp trunk/user/dnsmasq-2.93/patches/*.patch artifact/patches/
-          cp -r /tmp/patch-results/* artifact/logs/
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+          fetch-depth: 1
+      - uses: hendrikmuhs/ccache-action@main
         with:
-          name: dnsmasq-artifact
-          path: artifact/
+          key: ${{ matrix.target }}-${{ matrix.toolchain }}
+
+      - uses: actions/setup-go@main
+        with:
+          go-version: '1.24.x'
+          check-latest: true
+          cache: false
+
+      - name: Install Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            bison flex gperf help2man libtool-bin texinfo python3-docutils autopoint gettext ccache \
+            autoconf automake liblzma-dev libltdl-dev liblzo2-dev
+          echo "BUILD_DATE=$(TZ='Asia/Shanghai' date +%Y%m%d)" >> $GITHUB_ENV
+
+      - name: Build Firmware
+        run: |
+          make ${{ matrix.target }} TOOLCHAIN=${{ matrix.toolchain }}
+
+      - uses: actions/upload-artifact@main
+        with:
+          name: ${{ matrix.target }}-${{ matrix.toolchain }}-${{ env.BUILD_DATE }}
+          path: trunk/images/*.trx
+
+      - uses: ncipollo/release-action@main
+        with:
+          commit: ${{ github.sha }}
+          tag: ${{ env.BUILD_DATE }}
+          artifacts: trunk/images/*.trx
+          allowUpdates: true
+          omitBodyDuringUpdate: true
+
+      - uses: Mattraks/delete-workflow-runs@main
+        with:
+          retain_days: 0
+          keep_minimum_runs: 1
