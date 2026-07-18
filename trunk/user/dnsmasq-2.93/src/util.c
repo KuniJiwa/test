@@ -366,11 +366,13 @@ int sockaddr_isequal(const union mysockaddr *s1, const union mysockaddr *s2)
 	  s1->in.sin_addr.s_addr == s2->in.sin_addr.s_addr)
 	return 1;
       
+#ifdef HAVE_IPV6
       if (s1->sa.sa_family == AF_INET6 &&
 	  s1->in6.sin6_port == s2->in6.sin6_port &&
 	  s1->in6.sin6_scope_id == s2->in6.sin6_scope_id &&
 	  IN6_ARE_ADDR_EQUAL(&s1->in6.sin6_addr, &s2->in6.sin6_addr))
 	return 1;
+#endif /* HAVE_IPV6 */
     }
   return 0;
 }
@@ -381,9 +383,11 @@ int sockaddr_isnull(const union mysockaddr *s)
       s->in.sin_addr.s_addr == 0)
     return 1;
   
+#ifdef HAVE_IPV6
   if (s->sa.sa_family == AF_INET6 &&
       IN6_IS_ADDR_UNSPECIFIED(&s->in6.sin6_addr))
     return 1;
+#endif /* HAVE_IPV6 */
   
   return 0;
 }
@@ -393,9 +397,11 @@ int sa_len(union mysockaddr *addr)
 #ifdef HAVE_SOCKADDR_SA_LEN
   return addr->sa.sa_len;
 #else
+#ifdef HAVE_IPV6
   if (addr->sa.sa_family == AF_INET6)
     return sizeof(addr->in6);
   else
+#endif /* HAVE_IPV6 */
     return sizeof(addr->in); 
 #endif
 }
@@ -520,7 +526,7 @@ int is_same_net_prefix(struct in_addr a, struct in_addr b, int prefix)
   return is_same_net(a, b, mask);
 }
 
-
+#ifdef HAVE_IPV6
 int is_same_net6(struct in6_addr *a, struct in6_addr *b, int prefixlen)
 {
   int pfbytes = prefixlen >> 3;
@@ -558,7 +564,7 @@ void setaddr6part(struct in6_addr *addr, u64 host)
       host = host >> 8;
     }
 }
-
+#endif /* HAVE_IPV6 */
 
 /* returns port number from address */
 int prettyprint_addr(union mysockaddr *addr, char *buf)
@@ -570,6 +576,7 @@ int prettyprint_addr(union mysockaddr *addr, char *buf)
       inet_ntop(AF_INET, &addr->in.sin_addr, buf, ADDRSTRLEN);
       port = ntohs(addr->in.sin_port);
     }
+#ifdef HAVE_IPV6
   else if (addr->sa.sa_family == AF_INET6)
     {
       char name[IF_NAMESIZE];
@@ -583,6 +590,7 @@ int prettyprint_addr(union mysockaddr *addr, char *buf)
 	}
       port = ntohs(addr->in6.sin6_port);
     }
+#endif /* HAVE_IPV6 */
   
   return port;
 }
