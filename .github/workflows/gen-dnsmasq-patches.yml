@@ -66,6 +66,7 @@ jobs:
       - name: Download official dnsmasq 2.93 source
         run: |
           wget https://thekelleys.org.uk/dnsmasq/dnsmasq-2.93.tar.xz -O /tmp/dnsmasq-2.93.tar.xz
+          echo "0c00d4e5c97c8306e5fb932b348b34269c9c29a0e7df0e8e82958b407092bc19  /tmp/dnsmasq-2.93.tar.xz" | sha256sum --check
           tar -xf /tmp/dnsmasq-2.93.tar.xz -C /tmp
           cp -r /tmp/dnsmasq-2.93 /tmp/dnsmasq-2.93-test
 
@@ -82,7 +83,7 @@ jobs:
             echo ""
             for PATCH in 001-base-dhcp-network-adapt.patch 100-mainfile-kernel-ipv6-fix.patch 112-other-ipv6-compile-switch.patch 200-config-memory-param-tune.patch; do
               echo "=== Applying ${PATCH} ==="
-              patch -p1 --fuzz=3 < "${{ github.workspace }}/trunk/user/dnsmasq-2.93/patches/${PATCH}" 2>&1 || true
+              patch -p1 < "${{ github.workspace }}/trunk/user/dnsmasq-2.93/patches/${PATCH}" 2>&1 || true
               echo ""
             done
             echo "=== REJECT FILES ==="
