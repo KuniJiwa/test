@@ -148,7 +148,8 @@ HAVE_INOTIFY
 
 NO_ID
    Don't report *.bind CHAOS info to clients, forward such requests upstream instead.
-/* ADDED: NO_IPV6 - explicitly disable IPv6 support even if headers are present */
+   ADDED: NO_IPV6 - explicitly disable IPv6 support even if headers are present 
+
 NO_TFTP
 NO_DHCP
 NO_DHCP6
@@ -171,7 +172,6 @@ CONFFILE
 RESOLVFILE
    the default locations of these files are determined below, but may be overridden 
    in a build command line using COPTS.
-
 */
 
 /* Defining this builds a binary which handles time differently and works better on a system without a 
